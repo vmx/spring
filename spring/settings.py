@@ -1,3 +1,4 @@
+import os
 from urlparse import urlparse
 
 from logger import logger
@@ -33,6 +34,16 @@ class WorkloadSettings(object):
         self.n1ql_workers = 0
 
         self.async = options.async
+
+        self.data = options.data
+
+        self.dimensionality = options.dimensionality
+        if self.dimensionality:
+            self.doc_gen = 'spatial'
+        if self.doc_gen == 'spatial' and self.data:
+            length = os.path.getsize(self.data)
+            # doubles are 8 byte each and we have one for high and one for low
+            self.ops = int(length / (self.dimensionality * 8 * 2))
 
 
 class TargetSettings(object):
