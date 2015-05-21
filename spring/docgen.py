@@ -4,6 +4,7 @@ import time
 from hashlib import md5
 from itertools import cycle
 
+from logger import logger
 import random
 import numpy as np
 
@@ -248,6 +249,7 @@ class NewDocumentFromSpatialFile(object):
     DIM_SIZE = 16
 
     def __init__(self, filename, dim):
+        logger.warning("vmx: spring dcgetn: init: filename: {}".format(filename))
         self.file = open(filename, 'rb')
         self.dim = dim
         self.record_size = dim * self.DIM_SIZE

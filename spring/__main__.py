@@ -45,6 +45,12 @@ class CLIParser(ArgumentParser):
             '-e', dest='expiration', type=int, default=0, metavar='',
             help='percentage of new items that expire (0 by default)',
         )
+# XXX vmx 2015-05-15: Not sure if I should add this to spring, or just not expose it to the cli interface and exclusively use it through perfrunner
+        self.add_argument(
+            '-q', dest='view_names', type=str, default=[], metavar='',
+            action='append',
+            help='query the given view instead of doing CRUD operations',
+        )
         self.add_argument(
             '-o', dest='ops', type=int, default=float('inf'), metavar='',
             help='total number of operations (infinity by default)'
@@ -99,8 +105,10 @@ class CLIParser(ArgumentParser):
         args = super(CLIParser, self).parse_args()
 
         percentages = [args.creates, args.reads, args.updates, args.deletes]
-        if filter(lambda p: not 0 <= p <= 100, percentages) or \
-                sum(percentages) != 100:
+        #if filter(lambda p: not 0 <= p <= 100, percentages) or \
+        #        sum(percentages) != 100:
+        if (filter(lambda p: not 0 <= p <= 100, percentages) or
+                sum(percentages) != 100) and not args.view_names:
             self.error('Invalid operation [-c, -r, -u, -d] percentage')
 
         if not 0 <= args.working_set <= 100:

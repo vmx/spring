@@ -30,6 +30,7 @@ class WorkloadSettings(object):
         self.index_type = None
         self.ddocs = {}
         self.qparams = {}
+        self.view_names = options.view_names
         self.n1ql = False
         self.n1ql_workers = 0
 

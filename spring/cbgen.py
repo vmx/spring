@@ -59,6 +59,11 @@ class CBGen(CBAsyncGen):
     NODES_UPDATE_INTERVAL = 15
 
     def __init__(self, **kwargs):
+        #print("vmx: spring: cbgen: kwargs: {}".format(kwargs))
+        try:
+            kwargs['host'], kwargs['port'] = kwargs['host'].split(':')
+        except:
+            pass
         self.client = Connection(timeout=60, quiet=True, **kwargs)
         self.session = requests.Session()
         self.session.auth = (kwargs['username'], kwargs['password'])
@@ -118,6 +123,19 @@ class CBGen(CBAsyncGen):
     @quiet
     def lcb_query(self, ddoc, view, query):
         return tuple(self.client.query(ddoc, view, query=query))
+
+
+class SpatialGen(CBGen):
+
+    def query(self, ddoc, view, query):
+        node = choice(self.server_nodes).replace('8091', '8092')
+        url = 'http://{}/{}/_design/{}/_spatial/{}'.format(
+            node, self.client.bucket, ddoc, view
+        )
+        t0 = time()
+        resp = self.session.get(url=url, params=query)
+        latency = time() - t0
+        return resp.text, latency
 
 
 class N1QLGen(CBGen):
