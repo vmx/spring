@@ -12,8 +12,9 @@ from spring.cbgen import CBGen, CBAsyncGen, N1QLGen, SpatialGen
 from spring.docgen import (ExistingKey, KeyForRemoval, SequentialHotKey,
                            NewKey, NewDocument, NewNestedDocument,
                            ReverseLookupDocument, NewDocumentFromSpatialFile)
+# TODO vmx 2015-07-07: Remove ViewQueryGen as it is MapreduceQueryGen now
 from spring.querygen import (ViewQueryGen, ViewQueryGenByType, N1QLQueryGen,
-                             SpatialQueryFromFile)
+                             MapreduceQueryGen, SpatialQueryFromFile)
 
 
 @decorator
@@ -288,10 +289,21 @@ class WorkerFactory(object):
         return worker, workload_settings.workers
 
 
+# TODO vmx 2015-07-07: Remove ViewWorkerFactory as it is
+# MapreduceWorkerFactory now
 class ViewWorkerFactory(object):
 
     def __new__(self, workload_settings):
         return ViewWorker, workload_settings.query_workers
+
+
+class MapreduceWorkerFactory(object):
+
+    def __new__(self, workload_settings):
+        workers = 0
+        if hasattr(workload_settings, 'mapreduce'):
+            workers = getattr(workload_settings.mapreduce, 'workers', 0)
+        return MapreduceWorker, workers
 
 
 class SpatialWorkerFactory(object):
@@ -350,6 +362,7 @@ class QueryWorker(Worker):
             logger.info('Finished: {}-{}'.format(self.name, self.sid))
 
 
+# TODO vmx 2015-07-07: Remove ViewWorker as it is MapreduceWorker now
 class ViewWorker(QueryWorker):
 
     def __init__(self, workload_settings, target_settings, shutdown_event):
@@ -365,6 +378,18 @@ class ViewWorker(QueryWorker):
         else:
             self.new_queries = ViewQueryGenByType(workload_settings.index_type,
                                                   workload_settings.qparams)
+
+
+class MapreduceWorker(QueryWorker):
+
+    def __init__(self, workload_settings, target_settings, shutdown_event):
+        super(MapreduceWorker, self).__init__(workload_settings,
+                                              target_settings, shutdown_event)
+        self.name = 'mapreduce-worker'
+        self.total_workers = self.ws.mapreduce.workers
+        self.throughput = self.ws.mapreduce.throughput
+        self.new_queries = MapreduceQueryGen(self.ws.mapreduce.view_names,
+                                             self.ws.mapreduce.params)
 
 
 class SpatialWorker(QueryWorker):
@@ -552,11 +577,15 @@ class WorkloadGen(object):
 
         if self.ws._section == 'access':
             logger.info('Start query workers')
+            # TODO vmx 2015-07-07: Remove the ViewWorkerFactory as it is
+            # MapreduceWorkerFactory now
             self.start_workers(ViewWorkerFactory, 'view', curr_items,
                                deleted_items)
             self.start_workers(N1QLWorkerFactory, 'n1ql', curr_items,
                                deleted_items)
             self.start_workers(DcpWorkerFactory, 'dcp')
+            self.start_workers(MapreduceWorkerFactory, 'mapreduce', curr_items,
+                               deleted_items)
             self.start_workers(SpatialWorkerFactory, 'spatial', curr_items,
                                deleted_items)
 

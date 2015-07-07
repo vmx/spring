@@ -8,6 +8,7 @@ from numpy import random
 from couchbase.views.params import Query
 
 
+# TODO vmx 2015-07-07: Remove the ViewQueryGen as it is MapreduceQueryGen now
 class ViewQueryGen(object):
 
     PARAMS = {
@@ -211,6 +212,75 @@ class ViewQueryGenByType(object):
         params = self.generate_params(**doc)[view_name]
         params = dict(self.params, **params)
         return self.DDOC_NAME, view_name, Query(**params)
+
+
+class MapreduceQueryGen(object):
+    PARAMS = {
+        'limit': 30,
+        'stale': 'update_after',
+    }
+
+    def __init__(self, view_names, params):
+        """Create new mapreduce queries based on the given view names.
+
+        ``view_names`` is an array of strings which contains the
+        design document name and the view name separated by two
+        colons (``::``). If a view should be requested several times,
+        it's duplicated in the array that often.
+        """
+        self.params = dict(self.PARAMS, **params)
+        self.view_sequence = [tuple(view_name.split('::', 1))
+                              for view_name in view_names]
+        random.shuffle(self.view_sequence)
+        self.view_sequence = cycle(self.view_sequence)
+
+    @staticmethod
+    def _generate_params(category, city, realm, name, coins, **kwargs):
+        return {
+            'id_by_city': {
+                'key': city,
+            },
+            'name_and_email_by_city': {
+                'key': city,
+            },
+            'id_by_realm': {
+                'startkey': realm,
+            },
+            'experts_coins_by_name': {
+                'startkey': name,
+                'descending': True,
+            },
+            'name_by_category_and_coins': {
+                'startkey': [category, 0],
+                'endkey': [category, coins],
+            },
+            'name_and_email_by_category_and_coins': {
+                'startkey': [category, 0],
+                'endkey': [category, coins],
+            },
+            'achievements_by_category_and_coins': {
+                'startkey': [category, 0],
+                'endkey': [category, coins],
+            },
+            'id_by_realm_and_coins': {
+                'startkey': [realm, coins],
+                'endkey': [realm, 10000],
+            },
+            'name_and_email_by_realm_and_coins': {
+                'startkey': [realm, coins],
+                'endkey': [realm, 10000],
+            },
+            'experts_id_by_realm_and_coins': {
+                'startkey': [realm, coins],
+                'endkey': [realm, 10000],
+            },
+        }
+
+    def next(self, doc):
+        ddoc_name, view_name = self.view_sequence.next()
+        params = self._generate_params(**doc)[view_name]
+        params = dict(self.params, **params)
+        return ddoc_name, view_name, Query(**params)
 
 
 class SpatialQueryFromFile(object):
