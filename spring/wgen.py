@@ -389,7 +389,8 @@ class MapreduceWorker(QueryWorker):
         self.total_workers = self.ws.mapreduce.workers
         self.throughput = self.ws.mapreduce.throughput
         self.new_queries = MapreduceQueryGen(self.ws.mapreduce.view_names,
-                                             self.ws.mapreduce.params)
+                                             self.ws.mapreduce.params,
+                                             self.ws.doc_gen)
 
 
 class SpatialWorker(QueryWorker):

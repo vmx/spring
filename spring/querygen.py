@@ -220,7 +220,7 @@ class MapreduceQueryGen(object):
         'stale': 'update_after',
     }
 
-    def __init__(self, view_names, params):
+    def __init__(self, view_names, params, doc_gen):
         """Create new mapreduce queries based on the given view names.
 
         ``view_names`` is an array of strings which contains the
@@ -229,13 +229,14 @@ class MapreduceQueryGen(object):
         it's duplicated in the array that often.
         """
         self.params = dict(self.PARAMS, **params)
+        self.doc_gen = doc_gen
         self.view_sequence = [tuple(view_name.split('::', 1))
                               for view_name in view_names]
         random.shuffle(self.view_sequence)
         self.view_sequence = cycle(self.view_sequence)
 
     @staticmethod
-    def _generate_params(category, city, realm, name, coins, **kwargs):
+    def _generate_params_old(category, city, realm, name, coins, **kwargs):
         return {
             'id_by_city': {
                 'key': city,
@@ -274,11 +275,81 @@ class MapreduceQueryGen(object):
                 'startkey': [realm, coins],
                 'endkey': [realm, 10000],
             },
+       }
+
+    @staticmethod
+    def _generate_params_new(city, county, country, realm, state, full_state,
+                             coins, category, year, achievements, gmtime,
+                             **kwargs):
+        return {
+            'name_and_street_by_city': {
+                'key': city['f']['f'],
+            },
+            'name_and_email_by_county': {
+                'key': county['f']['f'],
+            },
+            'achievements_by_realm': {
+                'key': realm['f'],
+            },
+            'name_by_coins': {
+                'startkey': coins['f'] * 0.5,
+                'endkey': coins['f'],
+            },
+            'email_by_achievement_and_category': {
+                'startkey': [0, category],
+                'endkey': [achievements[0], category],
+            },
+            'street_by_year_and_coins': {
+                'startkey': [year, coins['f']],
+                'endkey': [year, 655.35],
+            },
+            'coins_stats_by_state_and_year': {
+                'key': [state['f'], year],
+                'group': 'true'
+            },
+            'coins_stats_by_gmtime_and_year': {
+                'key': [gmtime, year],
+                'group_level': 2
+            },
+            'coins_stats_by_full_state_and_year': {
+                'key': [full_state['f'], year],
+                'group': 'true'
+            },
+            'name_and_email_and_street_and_achievements_and_coins_by_city': {
+                'key': city['f']['f'],
+            },
+            'street_and_name_and_email_and_achievement_and_coins_by_county': {
+                'key': county['f']['f'],
+            },
+            'category_name_and_email_and_street_and_gmtime_and_year_by_country': {
+                'key': country['f'],
+            },
+            'calc_by_city': {
+                'key': city['f']['f'],
+            },
+            'calc_by_county': {
+                'key': county['f']['f'],
+            },
+            'calc_by_realm': {
+                'key': realm['f'],
+            },
+            'body_by_city': {
+                'key': city['f']['f'],
+            },
+            'body_by_realm': {
+                'key': realm['f'],
+            },
+            'body_by_country': {
+                'key': country['f'],
+            },
         }
 
     def next(self, doc):
         ddoc_name, view_name = self.view_sequence.next()
-        params = self._generate_params(**doc)[view_name]
+        if self.doc_gen == 'new':
+            params = self._generate_params_new(**doc)[view_name]
+        else:
+            params = self._generate_params_old(**doc)[view_name]
         params = dict(self.params, **params)
         return ddoc_name, view_name, Query(**params)
 
